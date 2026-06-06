@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  applications  Application[]
+  messages      Message[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  userId        String
+  status        ApplicationStatus @default(RECEIVED)
+
+  // Personal info
+  fullName      String
+  email         String
+  phone         String
+  dateOfBirth   DateTime
+  passportNumber String
+
+  // Address
+  address       String
+  city          String
+  postalCode    String
+  country       String
+
+  // Payment
+  paymentId     String?
+  paymentStatus PaymentStatus     @default(PENDING)
+  amount        Float?
+  currency      String            @default("EUR")
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id])
+  documents     Document[]
+  statusHistory StatusHistory[]
+  messages      Message[]
+  adminNotes    AdminNote[]
+  payment       Payment?
+}
+
+model Document {
+  id            String       @id @default(cuid())
+  applicationId String
+  name          String
+  type          DocumentType
+  url           String
+  size          Int
+  mimeType      String
+  uploadedAt    DateTime     @default(now())
+
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  applicationId   String        @unique
+  stripeSessionId String        @unique
+  stripePaymentId String?
+  amount          Int
+  currency        String        @default("EUR")
+  status          PaymentStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  application     Application   @relation(fields: [applicationId], references: [id])
+}
+
+model StatusHistory {
+  id            String            @id @default(cuid())
+  applicationId String
+  status        ApplicationStatus
+  note          String?
+  changedBy     String
+  createdAt     DateTime          @default(now())
+
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  applicationId String
+  userId        String
+  content       String
+  isFromAdmin   Boolean     @default(false)
+  readAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+model AdminNote {
+  id            String      @id @default(cuid())
+  applicationId String
+  content       String
+  createdBy     String
+  createdAt     DateTime    @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  excerpt     String
+  content     String    @db.Text
+  metaTitle   String
+  metaDesc    String
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category    String?
+  tags        String[]
+  readTime    Int       @default(5)
+  imageUrl    String?
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum ApplicationStatus {
+  RECEIVED
+  PROCESSING
+  AT_NOTARY
+  AT_LAWYER
+  AWAITING_CLIENT
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum DocumentType {
+  PASSPORT
+  PROOF_OF_ADDRESS
+  OTHER
+}
