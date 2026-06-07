@@ -283,7 +283,7 @@ export default function RegisterPage() {
             {/* Terms */}
             <p className="text-slate-500 text-xs leading-relaxed">
               Ved at oprette en konto accepterer du vores{" "}
-              <Link href="/vilkar" className="text-[#d4af37] hover:text-[#e5c040]">
+              <Link href="/handelsbetingelser" className="text-[#d4af37] hover:text-[#e5c040]">
                 vilkår og betingelser
               </Link>{" "}
               og{" "}

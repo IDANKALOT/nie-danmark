@@ -394,7 +394,7 @@ export default function HvordanDetVirkerPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/ansoeg"
+              href="/ansogning"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all duration-200"
               style={{
                 background: "linear-gradient(135deg, #d4af37, #f0c830)",

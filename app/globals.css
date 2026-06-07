@@ -82,7 +82,14 @@
 
 /* ==========================================================================
    Base Reset & Defaults
+
+   Wrapped in `@layer base` so Tailwind utility classes (which live in
+   `@layer utilities`, later in the layer order) can override these element
+   defaults. Unlayered rules always beat layered ones regardless of
+   specificity — without this, e.g. `text-white` on an `<h2>` or `<Link>`
+   would be silently overridden by the `color` declarations below.
    ========================================================================== */
+@layer base {
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
@@ -182,6 +189,7 @@ video {
 button {
   cursor: pointer;
 }
+} /* end @layer base */
 
 /* ==========================================================================
    Utility Classes (not covered by Tailwind)

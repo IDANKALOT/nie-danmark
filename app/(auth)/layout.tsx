@@ -72,7 +72,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <a href="/privatlivspolitik" className="hover:text-slate-400 transition-colors">
             Privatlivspolitik
           </a>
-          <a href="/vilkar" className="hover:text-slate-400 transition-colors">
+          <a href="/handelsbetingelser" className="hover:text-slate-400 transition-colors">
             Vilkår & betingelser
           </a>
           <a href="mailto:kontakt@nie-danmark.dk" className="hover:text-slate-400 transition-colors">

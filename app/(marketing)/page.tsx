@@ -161,7 +161,7 @@ function HeroSection() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
         >
           <Link
-            href="/ansoeg"
+            href="/ansogning"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-base transition-all duration-200"
             style={{
               background: "linear-gradient(135deg, #d4af37, #f0c830)",
@@ -1045,7 +1045,7 @@ function PricingSection() {
               </ul>
 
               <Link
-                href="/ansoeg"
+                href="/ansogning"
                 className="flex items-center justify-center gap-2 w-full py-4 rounded-xl font-bold text-base transition-all duration-200"
                 style={{
                   background: "linear-gradient(135deg, #d4af37, #f0c830)",
@@ -1312,7 +1312,7 @@ function CTASection() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/ansoeg"
+              href="/ansogning"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-base transition-all duration-200"
               style={{
                 background: "#0f172a",
