@@ -4,7 +4,7 @@ import { uploadBuffer } from "@/lib/storage";
 import { sendNotaryPackageEmail, sendLawyerPackageEmail } from "@/lib/email";
 import { mapApplicationToEx18Fields } from "./ex18-field-mapper";
 import {
-  generateEx18Form,
+  generateOfficialEx18Form,
   generateCustomerReceipt,
   generateCaseOverview,
   generateNotaryPackage,
@@ -22,7 +22,7 @@ interface PdfJob {
 }
 
 const PDF_JOBS: PdfJob[] = [
-  { type: "EX18_FORM", slug: "ex18-form", generate: generateEx18Form },
+  { type: "EX18_FORM", slug: "ex18-form", generate: generateOfficialEx18Form },
   { type: "CUSTOMER_RECEIPT", slug: "kvittering", generate: generateCustomerReceipt },
   { type: "CASE_OVERVIEW", slug: "sagsoverblik", generate: generateCaseOverview },
   { type: "NOTARY_PACKAGE", slug: "notarpakke", generate: generateNotaryPackage },

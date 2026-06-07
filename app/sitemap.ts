@@ -16,6 +16,7 @@ const STATIC_ROUTES: {
   { url: "/kontakt", priority: 0.8, changeFrequency: "monthly" },
   { url: "/faq", priority: 0.8, changeFrequency: "weekly" },
   { url: "/blog", priority: 0.8, changeFrequency: "weekly" },
+  { url: "/en/blog", priority: 0.7, changeFrequency: "weekly" },
   { url: "/privatlivspolitik", priority: 0.3, changeFrequency: "yearly" },
   { url: "/handelsbetingelser", priority: 0.3, changeFrequency: "yearly" },
   { url: "/cookiepolitik", priority: 0.3, changeFrequency: "yearly" },
@@ -34,10 +35,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   );
 
   const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
-    url: `${BASE_URL}/blog/${post.slug}`,
+    url: `${BASE_URL}${post.locale === "en" ? "/en/blog" : "/blog"}/${post.slug}`,
     lastModified: new Date(post.publishedAt),
     changeFrequency: "monthly" as const,
-    priority: 0.7,
+    priority: post.locale === "en" ? 0.6 : 0.7,
   }));
 
   return [...staticEntries, ...blogEntries];

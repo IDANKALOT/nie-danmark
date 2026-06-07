@@ -96,6 +96,20 @@ model Application {
   payment       Payment?
   generatedPdfs GeneratedPDF[]
   lead          Lead?
+  signature     ApplicationSignature?
+}
+
+model ApplicationSignature {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  image         Bytes       // encrypted PNG: iv (12B) || authTag (16B) || ciphertext
+  consentText   String
+  consentGiven  Boolean
+  ipAddress     String
+  userAgent     String
+  signedAt      DateTime    @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 }
 
 model Document {

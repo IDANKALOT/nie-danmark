@@ -7,6 +7,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
+import { SignaturePad, type SignatureValue } from "@/components/forms/signature-pad";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,7 @@ export function ApplicationForm() {
   const [passportFile, setPassportFile] = useState<UploadedFile | undefined>();
   const [addressFile, setAddressFile] = useState<UploadedFile | undefined>();
   const [otherFiles, setOtherFiles] = useState<UploadedFile[]>([]);
+  const [signature, setSignature] = useState<SignatureValue | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -223,6 +225,10 @@ export function ApplicationForm() {
 
   const handleSubmit = async () => {
     if (!personalData || !contactData) return;
+    if (!signature) {
+      setSubmitError("Du skal underskrive og acceptere samtykkeerklæringen, før du kan fortsætte");
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -247,7 +253,7 @@ export function ApplicationForm() {
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...personalData, ...contactData, documents: docs }),
+        body: JSON.stringify({ ...personalData, ...contactData, documents: docs, signature }),
       });
 
       if (!res.ok) {
@@ -642,6 +648,8 @@ export function ApplicationForm() {
 
                 <DisclaimerBanner variant="dark" size="sm" />
 
+                <SignaturePad onChange={setSignature} />
+
                 {submitError && (
                   <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
                     {submitError}
@@ -659,7 +667,7 @@ export function ApplicationForm() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={submitting}
+                    disabled={submitting || !signature}
                     className="flex-[2] py-3 px-4 rounded-xl bg-[#d4af37] text-[#0f172a] text-sm font-bold hover:bg-[#e5c040] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#d4af3730]"
                   >
                     {submitting ? (

@@ -27,6 +27,7 @@ export default async function AdminSagDetailPage({
       adminNotes: { orderBy: { createdAt: "desc" } },
       payment: true,
       generatedPdfs: { orderBy: { generatedAt: "desc" } },
+      signature: true,
     },
   });
 

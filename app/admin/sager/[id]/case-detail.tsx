@@ -19,6 +19,7 @@ import {
   Save,
   RefreshCw,
   FileDown,
+  PenTool,
 } from "lucide-react";
 import {
   getStatusLabel,
@@ -37,6 +38,7 @@ import type {
   AdminNote,
   Payment,
   GeneratedPDF,
+  ApplicationSignature,
   ApplicationStatus,
   DocumentType,
   PaymentStatus,
@@ -73,6 +75,7 @@ export interface CaseDetailApplication extends Application {
   adminNotes: AdminNote[];
   payment: Payment | null;
   generatedPdfs: GeneratedPDF[];
+  signature: ApplicationSignature | null;
 }
 
 function formatFileSize(bytes: number) {
@@ -589,6 +592,42 @@ export default function CaseDetail({ application }: { application: CaseDetailApp
                   </li>
                 ))}
               </ul>
+            )}
+          </SectionCard>
+
+          {/* Digital signature */}
+          <SectionCard title="Digital underskrift" icon={PenTool}>
+            {!application.signature ? (
+              <div className="flex items-center gap-2 py-2">
+                <AlertCircle size={15} style={{ color: "#f97316" }} />
+                <p className="text-sm text-slate-500">Ingen underskrift registreret for denne sag.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div
+                  className="rounded-xl overflow-hidden flex-shrink-0"
+                  style={{ background: "#ffffff", border: "1px solid #e2e8f0", width: 220, height: 120 }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/admin/applications/${application.id}/signature`}
+                    alt={`Digital underskrift fra ${application.fullName}`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <dl className="flex-1 min-w-0">
+                  <InfoRow label="Underskrevet" value={formatDateTime(application.signature.signedAt)} />
+                  <InfoRow label="Samtykke givet" value={application.signature.consentGiven ? "Ja" : "Nej"} />
+                  <InfoRow label="IP-adresse" value={application.signature.ipAddress} />
+                  <InfoRow label="Browser/enhed" value={application.signature.userAgent} />
+                </dl>
+              </div>
+            )}
+            {application.signature && (
+              <p className="text-xs text-slate-400 mt-4 leading-relaxed">
+                <span className="font-semibold text-slate-500">Samtykketekst ved underskrift: </span>
+                {application.signature.consentText}
+              </p>
             )}
           </SectionCard>
 

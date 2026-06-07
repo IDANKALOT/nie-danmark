@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { Application, PdfType } from "@prisma/client";
 import { formatDateTime } from "@/lib/utils";
+import { mapApplicationToOfficialEx18Fields } from "./ex18-field-mapper";
 import {
   PAGE_SIZE,
   MARGINS,
@@ -15,15 +18,14 @@ import {
 /**
  * Shared, branded PDF generation built on `pdf-lib`.
  *
- * IMPORTANT — there is no official fillable EX-18 template available from the
- * Spanish authorities, so `generateEx18Form` does NOT attempt to facsimile the
- * real government form. Instead it produces a clearly-labeled, branded
- * "data-summary aid" document ("Forberedt grundlag for EX-18 ansøgning") that
- * presents the applicant's data the way it will need to appear on the actual
- * EX-18 (Solicitud de NIE) form, so the case team / notary / lawyer can use it
- * as a preparation reference. This decision mirrors the approved plan.
+ * Four of the five generated documents (customer receipt, case overview,
+ * notary package, lawyer package) are original NIE Danmark-branded documents
+ * built from scratch with the helpers below. The fifth — the EX-18 form
+ * itself — is produced by filling the *official* Spanish government template
+ * at `lib/pdf/templates/ex18-official.pdf` (see `generateOfficialEx18Form`),
+ * not facsimiled.
  *
- * All five generators share:
+ * The branded generators share:
  *  - a branded navy header with gold "NIE Danmark" wordmark + gold accent line
  *  - a footer with page number, generation timestamp and a disclaimer
  *  - a generic "key-value section" drawing helper for consistent layout
@@ -498,51 +500,42 @@ function applicantSummaryRows(application: Application, fields: Record<string, s
   ];
 }
 
-// ── 1. EX-18 form (data-summary aid) ─────────────────────────────────
+// ── 1. EX-18 form (official government template, filled) ─────────────
 
-export async function generateEx18Form(
-  application: Application,
-  fields: Record<string, string>
-): Promise<Uint8Array> {
-  const type: PdfType = "EX18_FORM";
-  const { doc, cursor, generatedAt } = await createDocument(type);
+const EX18_TEMPLATE_PATH = path.join(process.cwd(), "lib", "pdf", "templates", "ex18-official.pdf");
 
-  drawIntroBlock(
-    cursor,
-    "Forberedt grundlag for EX-18 ansøgning",
-    "Dette dokument er udarbejdet af NIE Danmark som et hjælpemiddel til forberedelse af den officielle spanske ansøgningsformular EX-18 (Solicitud de NIE / Solicitud de Certificado de Registro de Ciudadano de la Unión). " +
-      "Det er IKKE en kopi eller et facsimile af den officielle myndighedsformular — den spanske regering stiller ikke en udfyldelig skabelon til rådighed. " +
-      "Brug dokumentet som et overblik over de oplysninger, der skal overføres til den officielle formular hos notar, advokat eller spansk myndighed."
-  );
+/**
+ * Fills the official Spanish EX-18 template — "Solicitud de NIE / Certificado
+ * de Registro de Ciudadano de la Unión", sourced directly from the Ministerio
+ * del Interior — with the subset of applicant data we can map confidently
+ * (see `mapApplicationToOfficialEx18Fields`).
+ *
+ * The template has ~98 AcroForm fields; the official form asks for far more
+ * than NIE Danmark collects at checkout (place/country of birth, nationality,
+ * marital status, parents' names, Spanish domicile, legal representatives,
+ * etc.). Those are intentionally left blank for the case team / notary /
+ * lawyer to complete from documents gathered later in the process.
+ *
+ * Deliberately NOT flattened: flattening a mostly-empty legal form would lock
+ * in the gaps and force the remaining ~85 fields to be filled out by hand on
+ * paper. Leaving it as a live AcroForm lets whoever finishes it do so
+ * digitally, in any PDF viewer, before printing/submitting.
+ */
+export async function generateOfficialEx18Form(application: Application): Promise<Uint8Array> {
+  const templateBytes = readFileSync(EX18_TEMPLATE_PATH);
+  const doc = await PDFDocument.load(templateBytes);
+  const form = doc.getForm();
 
-  drawKeyValueSection(cursor, "Personoplysninger", [
-    { label: "Fulde navn", value: fields.fullName ?? application.fullName },
-    { label: "Fødselsdato", value: fields.dateOfBirth },
-    { label: "Pasnummer", value: fields.passportNumber ?? application.passportNumber },
-    { label: "Statsborgerskab / land", value: fields.country ?? application.country },
-  ]);
+  for (const [name, value] of Object.entries(mapApplicationToOfficialEx18Fields(application))) {
+    if (!value) continue;
+    try {
+      form.getTextField(name).setText(value);
+    } catch (err) {
+      console.error(`[pdf] Could not set official EX-18 field "${name}":`, err);
+    }
+  }
 
-  drawKeyValueSection(cursor, "Kontakt- og adresseoplysninger", [
-    { label: "E-mail", value: fields.email ?? application.email },
-    { label: "Telefon", value: fields.phone ?? application.phone },
-    { label: "Adresse", value: fields.address ?? application.address },
-    { label: "Postnummer og by", value: `${fields.postalCode ?? application.postalCode} ${fields.city ?? application.city}` },
-    { label: "Fuld adresse", value: fields.fullAddress },
-  ]);
-
-  drawKeyValueSection(cursor, "Dokumentreferencer", [
-    { label: "Ansøgnings-ID (NIE Danmark)", value: fields.applicationId ?? application.id },
-    { label: "Indsendt", value: fields.submittedAt },
-    { label: "Pasnummer", value: fields.passportNumber ?? application.passportNumber },
-  ]);
-
-  drawParagraph(
-    cursor,
-    "Bemærk: Oplysningerne ovenfor stammer fra klientens egen indtastning ved ansøgning hos NIE Danmark og bør verificeres mod gyldigt pas/ID, før de overføres til den officielle EX-18-formular.",
-    { bold: false }
-  );
-
-  return finalize(doc, cursor, generatedAt);
+  return doc.save();
 }
 
 // ── 2. Customer receipt ──────────────────────────────────────────────

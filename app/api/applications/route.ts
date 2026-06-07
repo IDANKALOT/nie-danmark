@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendAdminNotificationEmail } from "@/lib/email";
+import { encryptBuffer } from "@/lib/crypto";
 
 const createApplicationSchema = z.object({
   fullName: z.string().min(2, "Navn for kort"),
@@ -24,6 +25,11 @@ const createApplicationSchema = z.object({
     )
     .optional()
     .default([]),
+  signature: z.object({
+    dataUrl: z.string().regex(/^data:image\/png;base64,/, "Ugyldigt underskriftsformat"),
+    consentGiven: z.literal(true),
+    consentText: z.string().min(1),
+  }),
 });
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -48,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { documents, dateOfBirth, ...applicationData } = parsed.data;
+    const { documents, signature, dateOfBirth, ...applicationData } = parsed.data;
 
     // Parse date of birth
     const dob = new Date(dateOfBirth);
@@ -58,6 +64,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
+
+    // Encrypt the signature image (stored as base64 PNG data URL)
+    const signatureImageBuffer = Buffer.from(
+      signature.dataUrl.replace(/^data:image\/png;base64,/, ""),
+      "base64"
+    );
+    const encryptedSignature = encryptBuffer(signatureImageBuffer);
+    const ipAddress =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      request.headers.get("x-real-ip") ??
+      "ukendt";
+    const userAgent = request.headers.get("user-agent") ?? "ukendt";
 
     // Create application with documents in a transaction
     const application = await db.$transaction(async (tx) => {
@@ -106,6 +124,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }),
         });
       }
+
+      // Persist the digital signature + consent log
+      await tx.applicationSignature.create({
+        data: {
+          applicationId: app.id,
+          image: encryptedSignature,
+          consentText: signature.consentText,
+          consentGiven: signature.consentGiven,
+          ipAddress,
+          userAgent,
+        },
+      });
 
       return app;
     });

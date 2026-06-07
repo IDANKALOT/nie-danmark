@@ -35,6 +35,47 @@ export function mapApplicationToEx18Fields(application: Application): Record<str
   };
 }
 
+/**
+ * Maps an `Application` record onto the official EX-18 PDF's AcroForm field
+ * names (the Spanish Ministerio del Interior template at
+ * `lib/pdf/templates/ex18-official.pdf`).
+ *
+ * The official form collects far more than NIE Danmark gathers at checkout
+ * (place/country of birth, nationality, marital status, parents' names,
+ * Spanish domicile, legal representatives, etc.) — those fields are left for
+ * the case team / notary / lawyer to complete from documents gathered later.
+ * Only the values we can map with confidence are pre-filled here, as a head
+ * start that — like the other generated documents — should still be verified
+ * against the applicant's passport before submission.
+ */
+export function mapApplicationToOfficialEx18Fields(application: Application): Record<string, string> {
+  const [givenName = "", firstSurname = "", ...restSurname] = application.fullName.trim().split(/\s+/);
+  const dob = application.dateOfBirth;
+
+  const fields: Record<string, string> = {
+    Nombre: givenName,
+    "1er Apellido": firstSurname,
+    "2 Apellido": restSurname.join(" "),
+    PASAPORTE: application.passportNumber,
+    Dia_Nacimiento: String(dob.getUTCDate()).padStart(2, "0"),
+    Mes_Nacimiento: String(dob.getUTCMonth() + 1).padStart(2, "0"),
+    Año_Nacimiento: String(dob.getUTCFullYear()),
+    "Teléfono móvil": application.phone,
+    email: application.email,
+  };
+
+  // Only fill the Spanish-domicile fields when the applicant has told us they
+  // already live in Spain — otherwise the address on file is their pre-move
+  // address abroad, and would be actively wrong on this specific form.
+  if (application.country === "Spanien") {
+    fields["Domicilio en España"] = application.address;
+    fields["Localidad"] = application.city;
+    fields["CP"] = application.postalCode;
+  }
+
+  return fields;
+}
+
 function formatAmount(amount: number | null, currency: string): string {
   if (amount == null) return "—";
   return new Intl.NumberFormat("da-DK", {

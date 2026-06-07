@@ -11,15 +11,15 @@ type BlogPostPageProps = {
 };
 
 function getPost(slug: string): BlogPost | undefined {
-  return BLOG_POSTS.find((post) => post.locale === "da" && post.slug === slug);
+  return BLOG_POSTS.find((post) => post.locale === "en" && post.slug === slug);
 }
 
 function getTranslation(post: BlogPost): BlogPost | undefined {
-  return BLOG_POSTS.find((p) => p.locale === "en" && p.slug === post.translationSlug);
+  return BLOG_POSTS.find((p) => p.locale === "da" && p.slug === post.translationSlug);
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("da-DK", {
+  return new Date(iso).toLocaleDateString("en-GB", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -27,7 +27,7 @@ function formatDate(iso: string) {
 }
 
 export function generateStaticParams() {
-  return BLOG_POSTS.filter((post) => post.locale === "da").map((post) => ({ slug: post.slug }));
+  return BLOG_POSTS.filter((post) => post.locale === "en").map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
@@ -36,12 +36,12 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
   if (!post) {
     return {
-      title: "Artiklen blev ikke fundet",
-      description: "Den artikel, du leder efter, findes ikke eller er blevet flyttet.",
+      title: "Article not found",
+      description: "The article you're looking for doesn't exist or has been moved.",
     };
   }
 
-  const url = `${BASE_URL}/blog/${post.slug}`;
+  const url = `${BASE_URL}/en/blog/${post.slug}`;
 
   return {
     title: post.metaTitle,
@@ -49,8 +49,8 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     alternates: {
       canonical: url,
       languages: {
-        da: url,
-        en: `${BASE_URL}/en/blog/${post.translationSlug}`,
+        en: url,
+        da: `${BASE_URL}/blog/${post.translationSlug}`,
       },
     },
     openGraph: {
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       url,
       title: post.metaTitle,
       description: post.metaDescription,
-      locale: "da_DK",
+      locale: "en_US",
       siteName: "NIE Danmark",
       publishedTime: post.publishedAt,
       tags: post.tags,
@@ -71,7 +71,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   };
 }
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
+export default async function EnglishBlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
   const post = getPost(slug);
 
@@ -79,7 +79,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const url = `${BASE_URL}/blog/${post.slug}`;
+  const url = `${BASE_URL}/en/blog/${post.slug}`;
   const translation = getTranslation(post);
   const relatedPosts = post.relatedSlugs
     .map((relatedSlug) => getPost(relatedSlug))
@@ -93,7 +93,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     description: post.metaDescription,
     datePublished: post.publishedAt,
     dateModified: post.publishedAt,
-    inLanguage: "da-DK",
+    inLanguage: "en-US",
     author: {
       "@type": "Organization",
       name: "NIE Danmark",
@@ -145,18 +145,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <div className="max-w-3xl mx-auto px-6">
           <div className="flex items-center justify-between gap-4 mb-8">
             <Link
-              href="/blog"
+              href="/en/blog"
               className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-[#d4af37] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Tilbage til bloggen
+              Back to the blog
             </Link>
             {translation && (
               <Link
-                href={`/en/blog/${translation.slug}`}
+                href={`/blog/${translation.slug}`}
                 className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-[#d4af37] transition-colors"
               >
-                Read in English
+                Læs på dansk
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -173,7 +173,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
-              {post.readTime} min. læsning
+              {post.readTime} min read
             </span>
           </div>
         </div>
@@ -213,7 +213,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {post.faqs.length > 0 && (
         <section className="py-16 bg-slate-50">
           <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-[#0f172a] mb-10">Ofte stillede spørgsmål</h2>
+            <h2 className="text-3xl font-bold text-[#0f172a] mb-10">Frequently asked questions</h2>
             <div className="space-y-4">
               {post.faqs.map((faq) => (
                 <details
@@ -236,12 +236,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {relatedPosts.length > 0 && (
         <section className="py-16 bg-white">
           <div className="max-w-6xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-[#0f172a] mb-10 text-center">Relaterede artikler</h2>
+            <h2 className="text-3xl font-bold text-[#0f172a] mb-10 text-center">Related articles</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {relatedPosts.map((related) => (
                 <Link
                   key={related.slug}
-                  href={`/blog/${related.slug}`}
+                  href={`/en/blog/${related.slug}`}
                   className="group flex flex-col bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:border-slate-300 transition-all"
                 >
                   <div className="p-7 flex flex-col flex-1">
@@ -254,7 +254,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-1">{related.excerpt}</p>
                     <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-4 border-t border-slate-100">
                       <Clock className="w-3.5 h-3.5" />
-                      {related.readTime} min. læsning
+                      {related.readTime} min read
                     </div>
                   </div>
                 </Link>
@@ -267,16 +267,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       {/* CTA */}
       <section className="py-20 bg-slate-50">
         <div className="max-w-2xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-[#0f172a] mb-4">Klar til at få dit NIE-nummer?</h2>
+          <h2 className="text-3xl font-bold text-[#0f172a] mb-4">Ready to get your NIE number?</h2>
           <p className="text-slate-600 mb-8">
-            Vi guider dig sikkert gennem hele ansøgningsprocessen – fra dokumentation til godkendelse, for en
-            fast pris på 210 EUR uden skjulte gebyrer.
+            We guide you safely through the entire application process — from documentation to approval, for
+            a fixed price of 210 EUR with no hidden fees.
           </p>
           <Link
             href="/ansogning"
             className="inline-flex items-center gap-2 bg-[#d4af37] text-[#0f172a] px-8 py-4 rounded-xl font-semibold hover:bg-yellow-400 transition-colors"
           >
-            Start din ansøgning <ArrowRight className="w-5 h-5" />
+            Start your application <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </section>

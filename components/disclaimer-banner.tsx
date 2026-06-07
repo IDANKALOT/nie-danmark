@@ -2,7 +2,7 @@ import { ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DISCLAIMER_TEXT =
-  "Vi er en privat virksomhed og er ikke en offentlig myndighed eller en del af den spanske regering. Vi hjælper kunder med administration og koordinering af ansøgningsprocessen.";
+  "Vi er en privat virksomhed og er ikke en offentlig myndighed eller en del af den spanske regering. Vi hjælper kunder med administration, dokumentforberedelse og koordinering af ansøgningsprocessen. Endelig godkendelse af ansøgninger foretages af de relevante spanske myndigheder.";
 
 interface DisclaimerBannerProps {
   variant?: "light" | "dark";
