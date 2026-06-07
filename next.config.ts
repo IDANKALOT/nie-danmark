@@ -63,12 +63,12 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://widget.trustpilot.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.amazonaws.com https://*.vercel-storage.com https://images.unsplash.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com",
-              "connect-src 'self' https://api.stripe.com",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "img-src 'self' data: blob: https://*.amazonaws.com https://*.vercel-storage.com https://images.unsplash.com https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.trustpilot.com",
+              "connect-src 'self' https://api.stripe.com https://*.trustpilot.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com https://*.trustpilot.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  serverExternalPackages: ["@prisma/client", "prisma", "bcryptjs", "nodemailer"],
+  serverExternalPackages: ["@prisma/client", "prisma", "bcryptjs"],
 
   logging: {
     fetches: {

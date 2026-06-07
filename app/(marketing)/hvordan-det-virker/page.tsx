@@ -313,6 +313,31 @@ export default function HvordanDetVirkerPage() {
         </div>
       </section>
 
+      {/* Team strip */}
+      <section className="py-14 px-6 bg-white">
+        <div
+          className="max-w-3xl mx-auto rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left"
+          style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}
+        >
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1.5">
+              Du er i trygge hænder
+            </h3>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Bag din ansøgning står et team af erfarne rådgivere samt autoriserede
+              spanske notarer og advokater.
+            </p>
+          </div>
+          <Link
+            href="/om-os"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-150"
+            style={{ background: "#0f172a", color: "#fff" }}
+          >
+            Mød teamet <ArrowRight size={15} />
+          </Link>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="py-20 px-6" style={{ background: "#f8fafc" }}>
         <div className="max-w-3xl mx-auto">

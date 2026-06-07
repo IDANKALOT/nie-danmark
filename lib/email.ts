@@ -1,18 +1,25 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import type { ApplicationStatus } from "@prisma/client";
+import { db } from "@/lib/db";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT ?? 587),
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+let resendClient: Resend | null = null;
+
+/**
+ * Lazily constructs the Resend client. `new Resend()` throws synchronously
+ * when no API key is present, which would crash build-time page-data
+ * collection (no env vars available) if instantiated at module scope.
+ */
+function getResendClient(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY || "re_build_placeholder");
+  }
+  return resendClient;
+}
 
 const FROM_ADDRESS = process.env.EMAIL_FROM ?? "NIE Danmark <noreply@nie-danmark.dk>";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@nie-danmark.dk";
+const NOTARY_EMAIL = process.env.NOTARY_EMAIL ?? "notar@nie-danmark.dk";
+const LAWYER_EMAIL = process.env.LAWYER_EMAIL ?? "advokat@nie-danmark.dk";
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
 const BRAND_COLORS = {
@@ -22,6 +29,61 @@ const BRAND_COLORS = {
   lightGray: "#f8fafc",
   textGray: "#475569",
 };
+
+/**
+ * Sends an email via Resend and records the outcome in `EmailLog`.
+ * Logging never throws — a logging failure must not break the send path.
+ */
+async function sendAndLog(params: {
+  to: string;
+  subject: string;
+  html: string;
+  template: string;
+  applicationId?: string;
+  leadId?: string;
+  attachments?: { filename: string; content: Buffer }[];
+}): Promise<void> {
+  const { to, subject, html, template, applicationId, leadId, attachments } = params;
+  let status = "sent";
+  let error: string | undefined;
+
+  try {
+    const result = await getResendClient().emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject,
+      html,
+      attachments,
+    });
+    if (result.error) {
+      status = "failed";
+      error = result.error.message;
+    }
+  } catch (err) {
+    status = "failed";
+    error = err instanceof Error ? err.message : "Unknown error";
+  }
+
+  try {
+    await db.emailLog.create({
+      data: {
+        to,
+        subject,
+        template,
+        status,
+        applicationId,
+        leadId,
+        error,
+      },
+    });
+  } catch {
+    // Logging is best-effort; never let it mask the original send result.
+  }
+
+  if (status === "failed") {
+    throw new Error(`Email send failed (${template}): ${error}`);
+  }
+}
 
 function baseTemplate(content: string, title: string): string {
   return `
@@ -202,11 +264,11 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
     <p>Har du spørgsmål? Skriv til os på <a href="mailto:${ADMIN_EMAIL}" style="color: ${BRAND_COLORS.gold};">${ADMIN_EMAIL}</a> eller brug chat-funktionen i dit dashboard.</p>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to,
     subject: "Velkommen til NIE Danmark - Din konto er oprettet",
     html: baseTemplate(content, "Velkommen til NIE Danmark"),
+    template: "welcome",
   });
 }
 
@@ -237,11 +299,12 @@ export async function sendPaymentConfirmationEmail(
     <p>Gem venligst dette ansøgnings-ID til fremtidig reference: <strong>${applicationId}</strong></p>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to,
     subject: "Betaling bekræftet - NIE ansøgning #" + applicationId,
     html: baseTemplate(content, "Betaling bekræftet"),
+    template: "payment-confirmation",
+    applicationId,
   });
 }
 
@@ -302,11 +365,11 @@ export async function sendApplicationUpdateEmail(
     <p>Har du spørgsmål? Kontakt os via dit dashboard eller skriv til <a href="mailto:${ADMIN_EMAIL}" style="color: ${BRAND_COLORS.gold};">${ADMIN_EMAIL}</a>.</p>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to,
     subject: `Statusopdatering: ${statusLabel} - NIE Danmark`,
     html: baseTemplate(content, "Statusopdatering"),
+    template: "application-update",
   });
 }
 
@@ -336,11 +399,12 @@ export async function sendDocumentRequestEmail(
     <p>Har du spørgsmål om, hvilke dokumenter der kræves? Skriv til os via dit dashboard.</p>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to,
     subject: "Handling påkrævet: Upload dokumenter - NIE Danmark",
     html: baseTemplate(content, "Dokumenter påkrævet"),
+    template: "document-request",
+    applicationId,
   });
 }
 
@@ -368,11 +432,11 @@ export async function sendApplicationCompletedEmail(
     <p>Tak fordi du valgte NIE Danmark. Vi ønsker dig alt det bedste i Spanien! Anbefal os gerne til andre danskere, der har brug for NIE-hjælp.</p>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to,
     subject: "Dit NIE-nummer er klar! - NIE Danmark",
     html: baseTemplate(content, "NIE Nummer Klar"),
+    template: "application-completed",
   });
 }
 
@@ -410,10 +474,134 @@ export async function sendAdminNotificationEmail(
     <a href="${APP_URL}/admin/applications/${applicationData.id}" class="btn">Se ansøgning i admin</a>
   `;
 
-  await transporter.sendMail({
-    from: FROM_ADDRESS,
+  await sendAndLog({
     to: ADMIN_EMAIL,
     subject: `Ny NIE-ansøgning: ${applicationData.fullName} - ${applicationData.id}`,
     html: baseTemplate(content, "Ny NIE-ansøgning"),
+    template: "admin-notification",
+    applicationId: applicationData.id,
+  });
+}
+
+interface PackageEmailData {
+  applicationId: string;
+  fullName: string;
+  attachments: { filename: string; content: Buffer }[];
+}
+
+export async function sendNotaryPackageEmail(data: PackageEmailData): Promise<void> {
+  const content = `
+    <h1>Ny sag klar til notarisering</h1>
+    <p>En ny NIE-ansøgning er blevet betalt og er klar til behandling hos notaren.</p>
+    <div class="info-box">
+      <p><strong>Ansøgnings-ID:</strong> ${data.applicationId}</p>
+      <p style="margin-top: 8px;"><strong>Klient:</strong> ${data.fullName}</p>
+    </div>
+    <p>Vedhæftet finder du de genererede dokumenter til sagen, herunder udfyldt EX-18 formular og sagsoverblik.</p>
+    <a href="${APP_URL}/admin/sager/${data.applicationId}" class="btn">Se sagen i admin</a>
+    <hr class="divider" />
+    <p>Dette er en automatisk besked fra NIE Danmarks sagsbehandlingssystem.</p>
+  `;
+
+  await sendAndLog({
+    to: NOTARY_EMAIL,
+    subject: `Ny sag til notarisering: ${data.fullName} - ${data.applicationId}`,
+    html: baseTemplate(content, "Ny sag til notar"),
+    template: "notary-package",
+    applicationId: data.applicationId,
+    attachments: data.attachments,
+  });
+}
+
+export async function sendLawyerPackageEmail(data: PackageEmailData): Promise<void> {
+  const content = `
+    <h1>Ny sag klar til juridisk gennemgang</h1>
+    <p>En ny NIE-ansøgning er blevet betalt og er klar til juridisk behandling.</p>
+    <div class="info-box">
+      <p><strong>Ansøgnings-ID:</strong> ${data.applicationId}</p>
+      <p style="margin-top: 8px;"><strong>Klient:</strong> ${data.fullName}</p>
+    </div>
+    <p>Vedhæftet finder du de genererede dokumenter til sagen, herunder udfyldt EX-18 formular og sagsoverblik.</p>
+    <a href="${APP_URL}/admin/sager/${data.applicationId}" class="btn">Se sagen i admin</a>
+    <hr class="divider" />
+    <p>Dette er en automatisk besked fra NIE Danmarks sagsbehandlingssystem.</p>
+  `;
+
+  await sendAndLog({
+    to: LAWYER_EMAIL,
+    subject: `Ny sag til juridisk gennemgang: ${data.fullName} - ${data.applicationId}`,
+    html: baseTemplate(content, "Ny sag til advokat"),
+    template: "lawyer-package",
+    applicationId: data.applicationId,
+    attachments: data.attachments,
+  });
+}
+
+const ABANDONED_STEP_COPY: Record<1 | 2 | 3, { subject: string; heading: string; body: string }> = {
+  1: {
+    subject: "Du er næsten i mål med din NIE-ansøgning",
+    heading: "Du var i gang med din NIE-ansøgning",
+    body: "Vi lagde mærke til, at du startede en ansøgning om dit spanske NIE-nummer, men ikke nåede at gøre den færdig. Det tager kun et par minutter at fuldføre — og vi er klar til at hjælpe dig hele vejen.",
+  },
+  2: {
+    subject: "Har du brug for hjælp til at færdiggøre din ansøgning?",
+    heading: "Vi er her, hvis du sidder fast",
+    body: "Din NIE-ansøgning venter stadig på dig. Hvis du har spørgsmål til processen, dokumenterne eller betalingen, er du meget velkommen til at kontakte os — vi hjælper gerne med at komme videre.",
+  },
+  3: {
+    subject: "Sidste chance: fuldfør din NIE-ansøgning",
+    heading: "Glip ikke chancen for at komme videre",
+    body: "Det er nu et stykke tid siden, du startede din NIE-ansøgning. Spanske myndigheder kan have lange sagsbehandlingstider, så jo før du kommer i gang, jo før kan du leve dit liv i Spanien uden bureaukratisk bøvl.",
+  },
+};
+
+export async function sendAbandonedCheckoutEmail(
+  to: string,
+  name: string,
+  step: 1 | 2 | 3,
+  resumeUrl: string,
+  leadId?: string
+): Promise<void> {
+  const firstName = (name || "der").split(" ")[0];
+  const copy = ABANDONED_STEP_COPY[step];
+
+  const content = `
+    <h1>${copy.heading}</h1>
+    <p>Hej ${firstName},</p>
+    <p>${copy.body}</p>
+    <a href="${resumeUrl}" class="btn">Fortsæt din ansøgning</a>
+    <hr class="divider" />
+    <p>Har du spørgsmål? Skriv til os på <a href="mailto:${ADMIN_EMAIL}" style="color: ${BRAND_COLORS.gold};">${ADMIN_EMAIL}</a> — vi svarer hurtigt.</p>
+  `;
+
+  await sendAndLog({
+    to,
+    subject: copy.subject,
+    html: baseTemplate(content, copy.heading),
+    template: `abandoned-checkout-step-${step}`,
+    leadId,
+  });
+}
+
+export async function sendLeadWelcomeEmail(to: string, name: string, leadId?: string): Promise<void> {
+  const firstName = (name || "der").split(" ")[0];
+  const content = `
+    <h1>Tak for din interesse, ${firstName}!</h1>
+    <p>Vi har modtaget dine oplysninger og er klar til at hjælpe dig med dit spanske NIE-nummer.</p>
+    <div class="info-box">
+      <p><strong>Hvad sker der nu?</strong><br/>
+      Du kan fortsætte din ansøgning direkte online, eller en af vores rådgivere kontakter dig snarest for at hjælpe dig videre.</p>
+    </div>
+    <a href="${APP_URL}/ansoegning" class="btn">Fortsæt din ansøgning</a>
+    <hr class="divider" />
+    <p>Har du spørgsmål allerede nu? Skriv til os på <a href="mailto:${ADMIN_EMAIL}" style="color: ${BRAND_COLORS.gold};">${ADMIN_EMAIL}</a>.</p>
+  `;
+
+  await sendAndLog({
+    to,
+    subject: "Tak for din henvendelse til NIE Danmark",
+    html: baseTemplate(content, "Tak for din henvendelse"),
+    template: "lead-welcome",
+    leadId,
   });
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DisclaimerBanner } from "@/components/disclaimer-banner";
 
 export const metadata: Metadata = {
   title: "FAQ – Ofte stillede spørgsmål om NIE-nummer",
@@ -42,6 +43,11 @@ export default function FaqPage() {
         <div className="max-w-3xl mx-auto px-6">
           <h1 className="text-5xl font-bold mb-6">Ofte stillede spørgsmål</h1>
           <p className="text-xl text-slate-300">Find svar på alle dine spørgsmål om NIE-nummer og vores service</p>
+        </div>
+      </section>
+      <section className="pt-12 bg-white">
+        <div className="max-w-4xl mx-auto px-6">
+          <DisclaimerBanner />
         </div>
       </section>
       <section className="py-20 bg-white">

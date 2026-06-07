@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
+import { TrustpilotWidgetLoader } from "@/components/reviews/trustpilot-widget-loader";
 
 export const metadata: Metadata = {
   title: "Priser – 210 EUR alt inklusiv",
@@ -88,6 +89,10 @@ export default function PriserPage() {
                 Sikker betaling via Stripe · SSL krypteret
               </p>
             </div>
+          </div>
+
+          <div className="mt-8">
+            <TrustpilotWidgetLoader />
           </div>
         </div>
       </section>

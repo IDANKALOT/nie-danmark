@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Globe, Mail, Phone, MapPin } from "lucide-react";
+import { DisclaimerBanner } from "@/components/disclaimer-banner";
 
 const footerLinks = {
   tjenester: [
@@ -96,8 +97,13 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Trust badges */}
+        {/* Disclaimer */}
         <div className="mt-12 pt-8 border-t border-white/10">
+          <DisclaimerBanner variant="dark" size="sm" />
+        </div>
+
+        {/* Trust badges */}
+        <div className="mt-8">
           <div className="flex flex-wrap gap-4 justify-center mb-8">
             {["🔒 SSL Krypteret", "💳 Stripe Sikker betaling", "🇪🇺 GDPR Compliant", "⚖️ Autoriserede notarer"].map((badge) => (
               <span key={badge} className="text-xs bg-white/5 border border-white/10 rounded-full px-4 py-2 text-slate-400">

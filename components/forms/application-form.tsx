@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { DisclaimerBanner } from "@/components/disclaimer-banner";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -638,6 +639,8 @@ export function ApplicationForm() {
                     </div>
                   </div>
                 </div>
+
+                <DisclaimerBanner variant="dark" size="sm" />
 
                 {submitError && (
                   <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">

@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { ApplicationStatus } from "@prisma/client";
+import type { ApplicationStatus, LeadStatus, TeamRole, PdfType } from "@prisma/client";
 
 /**
  * Merges Tailwind CSS class names, handling conflicts correctly.
@@ -189,6 +189,66 @@ export function timeAgo(date: Date | string): string {
   if (diffWeeks < 5) return `for ${diffWeeks} ${diffWeeks === 1 ? "uge" : "uger"} siden`;
   if (diffMonths < 12) return `for ${diffMonths} ${diffMonths === 1 ? "måned" : "måneder"} siden`;
   return formatDate(d);
+}
+
+const LEAD_STATUS_LABELS_DA: Record<LeadStatus, string> = {
+  NEW: "Ny",
+  CONTACTED: "Kontaktet",
+  IN_PROGRESS: "I proces",
+  PAID: "Betalt",
+  CONVERTED: "Konverteret",
+  LOST: "Tabt",
+};
+
+/**
+ * Returns the Danish display label for a lead status.
+ */
+export function getLeadStatusLabel(status: LeadStatus): string {
+  return LEAD_STATUS_LABELS_DA[status] ?? status;
+}
+
+const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
+  NEW: "bg-slate-100 text-slate-700 border-slate-200",
+  CONTACTED: "bg-blue-100 text-blue-800 border-blue-200",
+  IN_PROGRESS: "bg-amber-100 text-amber-800 border-amber-200",
+  PAID: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  CONVERTED: "bg-green-100 text-green-800 border-green-200",
+  LOST: "bg-red-100 text-red-800 border-red-200",
+};
+
+/**
+ * Returns the Tailwind badge color classes for a lead status.
+ */
+export function getLeadStatusColor(status: LeadStatus): string {
+  return LEAD_STATUS_COLORS[status] ?? "bg-gray-100 text-gray-800";
+}
+
+const TEAM_ROLE_LABELS_DA: Record<TeamRole, string> = {
+  LAWYER: "Advokat",
+  NOTARY: "Notar",
+  ADVISOR: "Rådgiver",
+};
+
+/**
+ * Returns the Danish display label for a team member role.
+ */
+export function getTeamRoleLabel(role: TeamRole): string {
+  return TEAM_ROLE_LABELS_DA[role] ?? role;
+}
+
+const PDF_TYPE_LABELS_DA: Record<PdfType, string> = {
+  EX18_FORM: "EX-18 udfyldningshjælp",
+  CUSTOMER_RECEIPT: "Kvittering til kunde",
+  CASE_OVERVIEW: "Sagsoverblik",
+  NOTARY_PACKAGE: "Notarpakke",
+  LAWYER_PACKAGE: "Advokatpakke",
+};
+
+/**
+ * Returns the Danish display label for a generated PDF document type.
+ */
+export function getPdfTypeLabel(type: PdfType): string {
+  return PDF_TYPE_LABELS_DA[type] ?? type;
 }
 
 /**

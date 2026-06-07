@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Star,
 } from "lucide-react";
+import { TeamSection } from "@/components/team/team-section";
 
 export const metadata: Metadata = {
   title: "Om os – NIE Danmark",
@@ -41,27 +42,6 @@ const VALUES = [
     title: "Gennemsigtighed",
     description:
       "Én fast pris. Ingen skjulte gebyrer. Fuld indsigt i din sags status hele vejen. Vi skjuler ingenting.",
-  },
-];
-
-const TEAM = [
-  {
-    name: "Maria Gonzalez",
-    role: "Direktør & Spansk NIE-specialist",
-    initials: "MG",
-    description: "15 års erfaring med spansk ret og udlændingesager. Uddannet i Madrid.",
-  },
-  {
-    name: "Anders Bøgvad",
-    role: "Kundeservice & Sagsbehandler",
-    initials: "AB",
-    description: "Hjælper danske kunder med at navigere processen fra start til slut.",
-  },
-  {
-    name: "Carlos Ruiz",
-    role: "Spansk partner & Advokat",
-    initials: "CR",
-    description: "Certificeret spansk advokat med speciale i NIE og ejendomshandler.",
   },
 ];
 
@@ -244,32 +224,7 @@ export default function OmOsPage() {
               Erfarne fagfolk med passion for at hjælpe danskere.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {TEAM.map((member) => (
-              <div
-                key={member.name}
-                className="bg-white rounded-2xl p-6 text-center"
-                style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)" }}
-              >
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4"
-                  style={{
-                    background: "linear-gradient(135deg, #d4af37, #f0d060)",
-                    color: "#0f172a",
-                  }}
-                >
-                  {member.initials}
-                </div>
-                <h3 className="text-base font-bold text-slate-900">{member.name}</h3>
-                <p className="text-xs font-semibold mt-1 mb-3" style={{ color: "#d4af37" }}>
-                  {member.role}
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {member.description}
-                </p>
-              </div>
-            ))}
-          </div>
+          <TeamSection />
         </div>
       </section>
 

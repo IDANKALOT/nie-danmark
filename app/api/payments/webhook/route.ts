@@ -6,6 +6,7 @@ import {
   sendPaymentConfirmationEmail,
   sendAdminNotificationEmail,
 } from "@/lib/email";
+import { generateAndDispatchDocuments } from "@/lib/pdf";
 import type Stripe from "stripe";
 
 // Stripe requires the raw body — disable Next.js body parsing
@@ -138,6 +139,12 @@ async function handleCheckoutCompleted(
       createdAt: application.createdAt,
     }).catch((err: unknown) => {
       console.error("[webhook] Failed to send admin notification:", err);
+    });
+
+    // Generate and dispatch the case PDF package (EX-18 prep aid, receipt,
+    // case overview, notary/lawyer cover sheets) — non-blocking.
+    generateAndDispatchDocuments(applicationId).catch((err: unknown) => {
+      console.error("[webhook] Failed to generate/dispatch documents:", err);
     });
 
     console.log(

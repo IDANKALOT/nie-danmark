@@ -94,6 +94,8 @@ model Application {
   messages      Message[]
   adminNotes    AdminNote[]
   payment       Payment?
+  generatedPdfs GeneratedPDF[]
+  lead          Lead?
 }
 
 model Document {
@@ -157,6 +159,152 @@ model AdminNote {
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 }
 
+// ── CRM ──────────────────────────────────────────────────────────
+
+model Lead {
+  id            String      @id @default(cuid())
+  email         String
+  name          String?
+  phone         String?
+  status        LeadStatus  @default(NEW)
+  source        String      @default("website")
+  score         Int         @default(0)
+  applicationId String?     @unique
+  reminderAt    DateTime?
+  reminderNote  String?
+  abandonedAt   DateTime?
+  lastEmailStep Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  application   Application? @relation(fields: [applicationId], references: [id])
+  activities    LeadActivity[]
+  tags          LeadTag[]      @relation("LeadToLeadTag")
+
+  @@index([status])
+  @@index([email])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  type      String
+  content   String
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model LeadTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("#d4af37")
+  createdAt DateTime @default(now())
+
+  leads     Lead[]   @relation("LeadToLeadTag")
+}
+
+// ── Team & social proof ──────────────────────────────────────────
+
+model TeamMember {
+  id             String   @id @default(cuid())
+  name           String
+  title          String
+  role           TeamRole @default(ADVISOR)
+  photoUrl       String?
+  bio            String   @db.Text
+  certifications String[]
+  email          String?
+  phone          String?
+  order          Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  authorName  String
+  rating      Int
+  content     String    @db.Text
+  source      String    @default("trustpilot")
+  externalId  String?   @unique
+  publishedAt DateTime  @default(now())
+  featured    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+// ── PDF / form automation ────────────────────────────────────────
+
+model FormTemplate {
+  id          String         @id @default(cuid())
+  name        String
+  type        String         @unique
+  description String?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  versions    FormVersion[]
+}
+
+model FormVersion {
+  id             String       @id @default(cuid())
+  templateId     String
+  version        String
+  fieldMapping   Json
+  pdfTemplateUrl String?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  template       FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  generatedPdfs  GeneratedPDF[]
+
+  @@unique([templateId, version])
+}
+
+model GeneratedPDF {
+  id            String        @id @default(cuid())
+  applicationId String
+  formVersionId String?
+  type          PdfType
+  url           String
+  fileName      String
+  size          Int           @default(0)
+  sentToNotary  Boolean       @default(false)
+  sentToLawyer  Boolean       @default(false)
+  generatedAt   DateTime      @default(now())
+
+  application   Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  formVersion   FormVersion?  @relation(fields: [formVersionId], references: [id])
+}
+
+// ── Email & audit ────────────────────────────────────────────────
+
+model EmailLog {
+  id            String    @id @default(cuid())
+  to            String
+  subject       String
+  template      String
+  status        String    @default("sent")
+  applicationId String?
+  leadId        String?
+  error         String?
+  sentAt        DateTime  @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
 model BlogPost {
   id          String    @id @default(cuid())
   title       String
@@ -202,4 +350,27 @@ enum DocumentType {
   PASSPORT
   PROOF_OF_ADDRESS
   OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  IN_PROGRESS
+  PAID
+  CONVERTED
+  LOST
+}
+
+enum TeamRole {
+  LAWYER
+  NOTARY
+  ADVISOR
+}
+
+enum PdfType {
+  EX18_FORM
+  CUSTOMER_RECEIPT
+  CASE_OVERVIEW
+  NOTARY_PACKAGE
+  LAWYER_PACKAGE
 }

@@ -19,12 +19,13 @@ import {
   Eye,
   HeadphonesIcon,
   Award,
-  Star,
   ChevronDown,
   ChevronUp,
   ArrowRight,
   Scale,
 } from "lucide-react";
+import { DisclaimerBanner } from "@/components/disclaimer-banner";
+import { ReviewsCarousel } from "@/components/reviews/reviews-carousel";
 
 /* =========================================================================
    Animation variants
@@ -861,36 +862,6 @@ function TrustSection() {
 /* =========================================================================
    Testimonials Section
    ========================================================================= */
-const TESTIMONIALS = [
-  {
-    initials: "MH",
-    name: "Mikkel Hansen",
-    city: "København",
-    rating: 5,
-    quote:
-      "Fantastisk service! Jeg var skeptisk i starten, men NIE Danmark gjorde hele processen utrolig nem. Fik mit NIE-nummer inden for 3 uger. Kan varmt anbefales!",
-    role: "Køber af feriebolig i Malaga",
-  },
-  {
-    initials: "SA",
-    name: "Sofie Andersen",
-    city: "Aarhus",
-    rating: 5,
-    quote:
-      "Professionel og hurtig service. Supportteamet svarede altid inden for få timer og guidede mig perfekt igennem dokumentationsprocessen. Top oplevelse.",
-    role: "Freelancer baseret i Barcelona",
-  },
-  {
-    initials: "LP",
-    name: "Lars Pedersen",
-    city: "Odense",
-    rating: 5,
-    quote:
-      "Brugte NIE Danmark til vores families flytning til Valencia. Alle tre NIE-numre var klar på under 4 uger. Prisen er fair og der er ingen skjulte gebyrer.",
-    role: "Familie, der flyttede til Spanien",
-  },
-];
-
 function TestimonialsSection() {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -898,6 +869,7 @@ function TestimonialsSection() {
   return (
     <section
       ref={ref}
+      id="anmeldelser"
       className="py-24"
       style={{ background: "#f1f5f9" }}
     >
@@ -928,95 +900,9 @@ function TestimonialsSection() {
           >
             Hvad vores kunder siger
           </h2>
-          <div className="flex items-center justify-center gap-2">
-            <div className="flex">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star
-                  key={s}
-                  size={18}
-                  style={{ color: "#d4af37" }}
-                  fill="#d4af37"
-                />
-              ))}
-            </div>
-            <span
-              className="text-base font-bold"
-              style={{ color: "#0f172a" }}
-            >
-              4.9 ud af 5
-            </span>
-            <span
-              className="text-sm"
-              style={{ color: "rgba(15,23,42,0.5)" }}
-            >
-              (500+ anmeldelser)
-            </span>
-          </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <motion.div
-              key={t.name}
-              initial="hidden"
-              animate={inView ? "visible" : "hidden"}
-              variants={stagger(i)}
-              className="rounded-2xl p-7 flex flex-col"
-              style={{
-                background: "#ffffff",
-                border: "1px solid rgba(15,23,42,0.07)",
-                boxShadow: "0 2px 12px rgba(15,23,42,0.06)",
-              }}
-            >
-              {/* Stars */}
-              <div className="flex gap-0.5 mb-5">
-                {Array.from({ length: t.rating }).map((_, s) => (
-                  <Star
-                    key={s}
-                    size={16}
-                    style={{ color: "#d4af37" }}
-                    fill="#d4af37"
-                  />
-                ))}
-              </div>
-
-              {/* Quote */}
-              <blockquote
-                className="text-sm leading-relaxed mb-6 flex-1"
-                style={{ color: "rgba(15,23,42,0.75)" }}
-              >
-                &ldquo;{t.quote}&rdquo;
-              </blockquote>
-
-              {/* Author */}
-              <div className="flex items-center gap-3 pt-5" style={{ borderTop: "1px solid rgba(15,23,42,0.07)" }}>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{
-                    background: "linear-gradient(135deg, #0f172a, #162c87)",
-                    color: "#d4af37",
-                  }}
-                >
-                  {t.initials}
-                </div>
-                <div>
-                  <div
-                    className="font-bold text-sm"
-                    style={{ color: "#0f172a" }}
-                  >
-                    {t.name}
-                  </div>
-                  <div
-                    className="text-xs"
-                    style={{ color: "rgba(15,23,42,0.45)" }}
-                  >
-                    {t.city} · {t.role}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <ReviewsCarousel />
       </div>
     </section>
   );
@@ -1492,6 +1378,11 @@ export default function MarketingPage() {
   return (
     <>
       <HeroSection />
+      <div className="bg-white py-6">
+        <div className="max-w-4xl mx-auto px-6">
+          <DisclaimerBanner size="sm" />
+        </div>
+      </div>
       <HowItWorksSection />
       <BenefitsSection />
       <TrustSection />

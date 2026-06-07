@@ -17,6 +17,8 @@ import {
   LogOut,
   ChevronRight,
   Shield,
+  UserCog,
+  Star,
 } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 
@@ -25,6 +27,8 @@ const NAV_ITEMS = [
   { href: "/admin/sager", label: "Sager", icon: FolderOpen, exact: false },
   { href: "/admin/kunder", label: "Kunder", icon: Users, exact: false },
   { href: "/admin/betalinger", label: "Betalinger", icon: CreditCard, exact: false },
+  { href: "/admin/team", label: "Team", icon: UserCog, exact: false },
+  { href: "/admin/reviews", label: "Anmeldelser", icon: Star, exact: false },
   { href: "/admin/blog", label: "Blog", icon: BookOpen, exact: false },
   { href: "/admin/indstillinger", label: "Indstillinger", icon: Settings, exact: false },
 ];
