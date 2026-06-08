@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
 import { SignaturePad, type SignatureValue } from "@/components/forms/signature-pad";
 
@@ -26,8 +27,23 @@ const contactSchema = z.object({
   country: z.string().min(1, "Vælg land"),
 });
 
+const accountSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Adgangskode skal være mindst 8 tegn")
+      .regex(/[A-Z]/, "Adgangskode skal indeholde mindst ét stort bogstav")
+      .regex(/[0-9]/, "Adgangskode skal indeholde mindst ét tal"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Adgangskoderne er ikke ens",
+    path: ["confirmPassword"],
+  });
+
 type PersonalData = z.infer<typeof personalSchema>;
 type ContactData = z.infer<typeof contactSchema>;
+type AccountData = z.infer<typeof accountSchema>;
 
 // ─── Step definitions ────────────────────────────────────────────────────────
 
@@ -173,6 +189,12 @@ function FileUploadZone({
 
 export function ApplicationForm() {
   const router = useRouter();
+  const { status: sessionStatus } = useSession();
+  const needsAccount = sessionStatus === "unauthenticated";
+  const [accountMode, setAccountMode] = useState<"register" | "login">("register");
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [accountSubmitting, setAccountSubmitting] = useState(false);
+  const [loginPassword, setLoginPassword] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
@@ -194,6 +216,12 @@ export function ApplicationForm() {
   const form2 = useForm<ContactData>({
     resolver: zodResolver(contactSchema),
     defaultValues: contactData ?? { email: "", phone: "", address: "", city: "", postalCode: "", country: "Danmark" },
+  });
+
+  // ─ Inline account-creation form (only rendered/used when not logged in)
+  const formAccount = useForm<AccountData>({
+    resolver: zodResolver(accountSchema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
   const goTo = (step: number) => {
@@ -222,6 +250,73 @@ export function ApplicationForm() {
       return null;
     }
   };
+
+  // Step 2 → 3: validates contact info and, for logged-out visitors, creates
+  // (or signs into) their account inline so they're authenticated before the
+  // document upload step — which requires a session — and before payment.
+  const onContactSubmit = form2.handleSubmit(async (data) => {
+    if (!needsAccount) {
+      setContactData(data);
+      goTo(3);
+      return;
+    }
+
+    setAccountError(null);
+
+    if (accountMode === "login") {
+      if (!loginPassword) {
+        setAccountError("Indtast din adgangskode");
+        return;
+      }
+      setAccountSubmitting(true);
+      try {
+        const result = await signIn("credentials", { email: data.email, password: loginPassword, redirect: false });
+        if (result?.error) {
+          setAccountError("Forkert adgangskode. Prøv igen.");
+          return;
+        }
+      } finally {
+        setAccountSubmitting(false);
+      }
+      setContactData(data);
+      goTo(3);
+      return;
+    }
+
+    const accountValid = await formAccount.trigger();
+    if (!accountValid) return;
+    const { password } = formAccount.getValues();
+
+    setAccountSubmitting(true);
+    try {
+      const regRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: personalData?.fullName, email: data.email, password }),
+      });
+
+      if (regRes.status === 409) {
+        setAccountMode("login");
+        setAccountError("Der findes allerede en konto med denne e-mail. Indtast din adgangskode for at fortsætte.");
+        return;
+      }
+      if (!regRes.ok) {
+        const err = await regRes.json().catch(() => ({}));
+        throw new Error((err as { message?: string }).message ?? "Kunne ikke oprette konto");
+      }
+
+      const result = await signIn("credentials", { email: data.email, password, redirect: false });
+      if (result?.error) throw new Error("Konto oprettet, men login fejlede. Prøv igen.");
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : "Der opstod en fejl");
+      return;
+    } finally {
+      setAccountSubmitting(false);
+    }
+
+    setContactData(data);
+    goTo(3);
+  });
 
   const handleSubmit = async () => {
     if (!personalData || !contactData) return;
@@ -416,13 +511,7 @@ export function ApplicationForm() {
 
             {/* ── Step 2 ── */}
             {currentStep === 2 && (
-              <form
-                onSubmit={form2.handleSubmit((data) => {
-                  setContactData(data);
-                  goTo(3);
-                })}
-                className="space-y-5"
-              >
+              <form onSubmit={onContactSubmit} className="space-y-5">
                 <div>
                   <h2 className="text-xl font-bold text-white mb-1">Kontaktoplysninger</h2>
                   <p className="text-slate-400 text-sm">Hvor kan vi kontakte dig?</p>
@@ -505,10 +594,78 @@ export function ApplicationForm() {
                   <FieldError message={form2.formState.errors.country?.message} />
                 </div>
 
+                {needsAccount && (
+                  <div className="border border-white/10 rounded-xl p-5 bg-white/[0.02] space-y-4">
+                    <div>
+                      <h3 className="text-white font-semibold text-sm mb-1">
+                        {accountMode === "register" ? "Opret din konto" : "Log ind på din konto"}
+                      </h3>
+                      <p className="text-slate-400 text-xs">
+                        {accountMode === "register"
+                          ? "Du skal bruge en konto for at uploade dokumenter og følge din ansøgning. Vi opretter den automatisk med e-mailen ovenfor — du behøver ikke registrere dig separat."
+                          : "Der findes allerede en konto med denne e-mail. Indtast din adgangskode for at fortsætte — så er du logget ind resten af forløbet."}
+                      </p>
+                    </div>
+
+                    {accountMode === "register" ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="password" required>Adgangskode</Label>
+                          <input
+                            id="password"
+                            type="password"
+                            {...formAccount.register("password")}
+                            placeholder="Mindst 8 tegn, 1 stort bogstav, 1 tal"
+                            className={formAccount.formState.errors.password ? inputErrorClass : inputClass}
+                          />
+                          <FieldError message={formAccount.formState.errors.password?.message} />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmPassword" required>Bekræft adgangskode</Label>
+                          <input
+                            id="confirmPassword"
+                            type="password"
+                            {...formAccount.register("confirmPassword")}
+                            placeholder="Gentag adgangskode"
+                            className={formAccount.formState.errors.confirmPassword ? inputErrorClass : inputClass}
+                          />
+                          <FieldError message={formAccount.formState.errors.confirmPassword?.message} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="loginPassword" required>Adgangskode</Label>
+                        <input
+                          id="loginPassword"
+                          type="password"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="Din adgangskode"
+                          className={inputClass}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountMode("register");
+                            setAccountError(null);
+                            setLoginPassword("");
+                          }}
+                          className="text-xs text-[#d4af37] hover:underline mt-2"
+                        >
+                          Opret en ny konto i stedet
+                        </button>
+                      </div>
+                    )}
+
+                    {accountError && <FieldError message={accountError} />}
+                  </div>
+                )}
+
                 <StepNavigation
                   onBack={() => goTo(1)}
-                  submitLabel="Næste"
+                  submitLabel={accountSubmitting ? "Et øjeblik…" : "Næste"}
                   isSubmit
+                  disabled={accountSubmitting}
                 />
               </form>
             )}
@@ -708,11 +865,13 @@ function StepNavigation({
   onNext,
   submitLabel,
   isSubmit,
+  disabled,
 }: {
   onBack: (() => void) | null;
   onNext?: () => void;
   submitLabel: string;
   isSubmit?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex gap-3 pt-2">
@@ -728,7 +887,8 @@ function StepNavigation({
       {isSubmit ? (
         <button
           type="submit"
-          className={`${onBack ? "flex-[2]" : "w-full"} py-3 px-4 rounded-xl bg-[#d4af37] text-[#0f172a] text-sm font-bold hover:bg-[#e5c040] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#d4af3720]`}
+          disabled={disabled}
+          className={`${onBack ? "flex-[2]" : "w-full"} py-3 px-4 rounded-xl bg-[#d4af37] text-[#0f172a] text-sm font-bold hover:bg-[#e5c040] transition-all flex items-center justify-center gap-2 shadow-md shadow-[#d4af3720] disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {submitLabel}
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
